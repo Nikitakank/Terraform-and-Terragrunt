@@ -150,6 +150,102 @@
     border-top:1px solid var(--border);
   }
 
+  /* ===== SEARCH ===== */
+  .search-wrap{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:var(--bg);
+    padding:14px 0;
+    border-bottom:1px solid var(--border);
+  }
+
+  .search-box{
+    position:relative;
+    display:flex;
+    align-items:center;
+  }
+
+  .search-box .icon{
+    position:absolute;
+    left:14px;
+    color:var(--muted);
+    font-size:14px;
+    pointer-events:none;
+  }
+
+  .search-box input{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 70px 11px 38px;
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--text);
+    outline:none;
+    transition:border-color .15s ease;
+  }
+
+  .search-box input::placeholder{
+    color:var(--muted);
+  }
+
+  .search-box input:focus{
+    border-color:var(--purple);
+  }
+
+  .search-box .clear-btn{
+    position:absolute;
+    right:10px;
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:13px;
+    cursor:pointer;
+    padding:4px 6px;
+    display:none;
+    font-family:var(--mono);
+  }
+
+  .search-box .clear-btn:hover{
+    color:var(--text);
+  }
+
+  .search-meta{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+    min-height:16px;
+  }
+
+  .search-meta .hit-count{
+    color:var(--green);
+  }
+
+  .no-results{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+    font-family:var(--mono);
+    font-size:14px;
+    display:none;
+  }
+
+  mark{
+    background:rgba(210,153,34,0.35);
+    color:var(--text);
+    border-radius:2px;
+    padding:0 1px;
+  }
+
+  /* hidden state driven by search */
+  .item.is-hidden,
+  .section.is-hidden{
+    display:none !important;
+  }
+
   /* ===== SECTION ===== */
   .section{
     padding:40px 0;
@@ -398,10 +494,19 @@
 <div class="wrap">
 
   <div class="hero">
-    <div class="kicker">zsh — field-notes</div>
+    <div class="kicker">Terrafrom-notes</div>
     <h1>Terraform <span class="accent">&amp;</span> Terragrunt — Notes</h1>
     <p>Everything actually used day-to-day — explained the simple way, with the real incidents that show up in production and the questions that get asked in interviews. Read this once, set.</p>
     <span class="terminal-tag">companion to → Docker &amp; Kubernetes Field Notes</span>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Search topics, commands, errors… e.g. 'state lock', 'mock_outputs', 'drift'" autocomplete="off">
+      <button class="clear-btn" id="clearBtn" type="button">✕ clear</button>
+    </div>
+    <div class="search-meta" id="searchMeta"></div>
   </div>
 
   <details class="toc" open>
@@ -1081,11 +1186,132 @@ dependency "vpc" {
     </details>
   </section>
 
+  <div class="no-results" id="noResults">no topics match that search — try a different term</div>
+
   <footer>
     built for daily reference · terraform &amp; terragrunt field notes · keep this open in a tab
   </footer>
 
 </div>
+
+<script>
+(function(){
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('clearBtn');
+  const meta = document.getElementById('searchMeta');
+  const noResults = document.getElementById('noResults');
+  const sections = Array.from(document.querySelectorAll('.section'));
+  const items = Array.from(document.querySelectorAll('.item'));
+
+  // cache original innerHTML of summary + body for each item so we can
+  // restore clean text when clearing highlights (avoids nested <mark> issues)
+  const cache = items.map(item => ({
+    item,
+    summary: item.querySelector('summary'),
+    body: item.querySelector('.item-body'),
+    summaryHTML: item.querySelector('summary').innerHTML,
+    bodyHTML: item.querySelector('.item-body') ? item.querySelector('.item-body').innerHTML : '',
+    wasOpen: item.hasAttribute('open')
+  }));
+
+  function escapeRegex(str){
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function highlight(html, term){
+    if(!term) return html;
+    // avoid highlighting inside tag attributes by only touching text nodes via a temp container
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    const regex = new RegExp('(' + escapeRegex(term) + ')', 'ig');
+    const walker = document.createTreeWalker(wrapper, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    let n;
+    while(n = walker.nextNode()) nodes.push(n);
+    nodes.forEach(node => {
+      if(regex.test(node.nodeValue)){
+        const span = document.createElement('span');
+        span.innerHTML = node.nodeValue.replace(regex, '<mark>$1</mark>');
+        node.parentNode.replaceChild(span, node);
+      }
+    });
+    return wrapper.innerHTML;
+  }
+
+  function runSearch(){
+    const term = input.value.trim();
+    clearBtn.style.display = term ? 'block' : 'none';
+
+    if(!term){
+      // restore everything
+      cache.forEach(c => {
+        c.summary.innerHTML = c.summaryHTML;
+        if(c.body) c.body.innerHTML = c.bodyHTML;
+        c.item.classList.remove('is-hidden');
+        if(c.wasOpen) c.item.setAttribute('open', '');
+        else c.item.removeAttribute('open');
+      });
+      sections.forEach(s => s.classList.remove('is-hidden'));
+      meta.textContent = '';
+      noResults.style.display = 'none';
+      return;
+    }
+
+    const lower = term.toLowerCase();
+    let matchCount = 0;
+
+    cache.forEach(c => {
+      const haystack = (c.summaryHTML + ' ' + c.bodyHTML).toLowerCase();
+      const isMatch = haystack.indexOf(lower) !== -1;
+
+      if(isMatch){
+        matchCount++;
+        c.summary.innerHTML = highlight(c.summaryHTML, term);
+        if(c.body) c.body.innerHTML = highlight(c.bodyHTML, term);
+        c.item.classList.remove('is-hidden');
+        c.item.setAttribute('open', '');
+      } else {
+        c.summary.innerHTML = c.summaryHTML;
+        if(c.body) c.body.innerHTML = c.bodyHTML;
+        c.item.classList.add('is-hidden');
+        c.item.removeAttribute('open');
+      }
+    });
+
+    // hide sections with zero visible items
+    sections.forEach(s => {
+      const visible = s.querySelectorAll('.item:not(.is-hidden)').length;
+      s.classList.toggle('is-hidden', visible === 0);
+    });
+
+    meta.innerHTML = matchCount > 0
+      ? '<span class="hit-count">' + matchCount + ' match' + (matchCount === 1 ? '' : 'es') + '</span> for "' + term + '"'
+      : 'no matches for "' + term + '"';
+
+    noResults.style.display = matchCount === 0 ? 'block' : 'none';
+  }
+
+  input.addEventListener('input', runSearch);
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    runSearch();
+    input.focus();
+  });
+
+  // keyboard shortcut: "/" focuses search, like many docs sites
+  document.addEventListener('keydown', (e) => {
+    if(e.key === '/' && document.activeElement !== input){
+      e.preventDefault();
+      input.focus();
+    }
+    if(e.key === 'Escape' && document.activeElement === input){
+      input.value = '';
+      runSearch();
+      input.blur();
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
