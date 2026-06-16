@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform &amp; Terragrunt — Field Notes</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#161b22;
+    --panel-2:#1c2128;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --muted:#8b949e;
+    --green:#3fb950;
+    --amber:#d29922;
+    --red:#f85149;
+    --blue:#58a6ff;
+    --purple:#bc8cff;
+    --mono: 'SF Mono', 'Consolas', 'Menlo', monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.65;
+    padding-bottom:80px;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+
+  a{color:var(--blue);text-decoration:none;}
+
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px;}
+
+  /* ===== TOP BAR ===== */
+  .topbar{
+    border-bottom:1px solid var(--border);
+    padding:14px 0;
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  .topbar .eyebrow{
+    color:var(--purple);
+  }
+
+  /* ===== HERO ===== */
+  .hero{
+    padding:48px 0 32px;
+    border-bottom:1px solid var(--border);
+  }
+
+  .hero .kicker{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    text-transform:lowercase;
+    margin-bottom:14px;
+    letter-spacing:0.3px;
+  }
+
+  .hero h1{
+    font-size:34px;
+    font-weight:800;
+    letter-spacing:-0.5px;
+    margin-bottom:14px;
+    color:var(--text);
+  }
+
+  .hero h1 .accent{
+    color:var(--purple);
+  }
+
+  .hero p{
+    color:var(--muted);
+    font-size:15.5px;
+    max-width:620px;
+    margin-bottom:20px;
+  }
+
+  .hero .terminal-tag{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--green);
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:8px 12px;
+    display:inline-block;
+  }
+
+  /* ===== TOC ===== */
+  .toc{
+    padding:24px 0;
+    border-bottom:1px solid var(--border);
+  }
+
+  .toc summary{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+    cursor:pointer;
+    list-style:none;
+    margin-bottom:14px;
+  }
+
+  .toc summary::-webkit-details-marker{display:none;}
+  .toc summary::before{content:"☰ ";}
+
+  .toc-group{
+    margin-bottom:18px;
+  }
+
+  .toc-group-title{
+    font-size:14px;
+    font-weight:700;
+    margin-bottom:8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .toc-links{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 14px;
+    font-size:13px;
+  }
+
+  .toc-links a{color:var(--muted);}
+  .toc-links a:hover{color:var(--blue);}
+
+  .legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+
+  /* ===== SECTION ===== */
+  .section{
+    padding:40px 0;
+    border-bottom:1px solid var(--border);
+  }
+
+  .section-tag{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+
+  .section h2{
+    font-size:26px;
+    font-weight:800;
+    margin-bottom:8px;
+  }
+
+  .section-desc{
+    color:var(--muted);
+    font-size:14.5px;
+    margin-bottom:28px;
+    max-width:640px;
+  }
+
+  /* ===== ACCORDION ITEM ===== */
+  .item{
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:10px;
+    background:var(--panel);
+    overflow:hidden;
+  }
+
+  .item summary{
+    list-style:none;
+    cursor:pointer;
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--text);
+  }
+
+  .item summary::-webkit-details-marker{display:none;}
+
+  .item summary .num{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    flex-shrink:0;
+  }
+
+  .item summary .arrow{
+    margin-left:auto;
+    color:var(--muted);
+    font-size:12px;
+    transition:transform .2s ease;
+  }
+
+  .item[open] summary .arrow{
+    transform:rotate(180deg);
+  }
+
+  .item-body{
+    padding:0 18px 20px 44px;
+    font-size:14.5px;
+  }
+
+  .item-body p{margin-bottom:12px;}
+  .item-body p:last-child{margin-bottom:0;}
+
+  .simple-box{
+    background:rgba(188,140,255,0.07);
+    border-left:3px solid var(--purple);
+    padding:12px 16px;
+    border-radius:0 6px 6px 0;
+    margin-bottom:14px;
+  }
+
+  .simple-box strong{color:var(--purple);}
+
+  .item-body ul{
+    margin:10px 0 14px 20px;
+  }
+
+  .item-body li{
+    margin-bottom:7px;
+  }
+
+  .item-body code{
+    font-family:var(--mono);
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+    font-size:13px;
+    color:var(--blue);
+  }
+
+  /* table */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0;
+    font-size:13.5px;
+  }
+
+  th, td{
+    border:1px solid var(--border);
+    padding:8px 12px;
+    text-align:left;
+  }
+
+  th{
+    background:var(--panel-2);
+    font-family:var(--mono);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--muted);
+  }
+
+  /* code block */
+  pre{
+    background:#010409;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    overflow-x:auto;
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.7;
+    margin:14px 0;
+    color:#c9d1d9;
+  }
+
+  pre .c{color:var(--muted);}
+  pre .k{color:#ff7b72;}
+  pre .s{color:#a5d6ff;}
+
+  /* scenario / issue boxes */
+  .scenario-box{
+    background:rgba(88,166,255,0.06);
+    border-left:3px solid var(--blue);
+    padding:12px 16px;
+    border-radius:0 6px 6px 0;
+    margin:14px 0;
+  }
+
+  .gotcha-box{
+    background:rgba(248,81,73,0.06);
+    border-left:3px solid var(--red);
+    padding:12px 16px;
+    border-radius:0 6px 6px 0;
+    margin:14px 0;
+  }
+
+  .box-label{
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    margin-bottom:6px;
+    display:block;
+  }
+
+  /* issue items (real office issues) */
+  .issue-item summary{
+    align-items:flex-start;
+  }
+
+  .issue-item .issue-badge{
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--red);
+    background:rgba(248,81,73,0.12);
+    border:1px solid rgba(248,81,73,0.3);
+    padding:2px 8px;
+    border-radius:4px;
+    flex-shrink:0;
+    margin-top:1px;
+  }
+
+  .issue-item h4{
+    font-size:13px;
+    font-weight:600;
+    color:var(--amber);
+    margin:14px 0 6px;
+  }
+
+  /* interview Q items */
+  .qa-item summary{
+    align-items:flex-start;
+  }
+
+  .qa-item .q-badge{
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--green);
+    background:rgba(63,185,80,0.12);
+    border:1px solid rgba(63,185,80,0.3);
+    padding:2px 8px;
+    border-radius:4px;
+    flex-shrink:0;
+    margin-top:1px;
+  }
+
+  .qa-item .answer-label{
+    font-family:var(--mono);
+    font-weight:700;
+    color:var(--green);
+  }
+
+  footer{
+    text-align:center;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    padding:36px 0 0;
+  }
+
+  @media (max-width: 640px){
+    .hero h1{font-size:26px;}
+    .section h2{font-size:21px;}
+    .item-body{padding-left:18px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; scroll-behavior:auto !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <span class="eyebrow">field notes</span> · daily ops · interview ready
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="kicker">zsh — field-notes</div>
+    <h1>Terraform <span class="accent">&amp;</span> Terragrunt — Notes</h1>
+    <p>Everything actually used day-to-day — explained the simple way, with the real incidents that show up in production and the questions that get asked in interviews. Read this once, set.</p>
+    <span class="terminal-tag">companion to → Docker &amp; Kubernetes Field Notes</span>
+  </div>
+
+  <details class="toc" open>
+    <summary>Browse topics</summary>
+
+    <div class="toc-group">
+      <div class="toc-group-title">🟪 Terraform</div>
+      <div class="toc-links">
+        <a href="#t-overview">Overview &amp; Core Concepts</a>
+        <a href="#t-resources">Resources, Variables &amp; State</a>
+        <a href="#t-modules">Modules &amp; Reusability</a>
+        <a href="#t-commands">Command Cheat Sheet</a>
+        <a href="#t-scenarios">Real Office Issues</a>
+        <a href="#t-interview">Interview Q&amp;A</a>
+      </div>
+    </div>
+
+    <div class="toc-group">
+      <div class="toc-group-title">🟦 Terragrunt</div>
+      <div class="toc-links">
+        <a href="#g-overview">Why Terragrunt Exists</a>
+        <a href="#g-structure">DRY Structure &amp; Dependencies</a>
+        <a href="#g-commands">Command Cheat Sheet</a>
+        <a href="#g-scenarios">Real Office Issues</a>
+        <a href="#g-interview">Interview Q&amp;A</a>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span>🟪 terraform</span>
+      <span>🟦 terragrunt</span>
+      <span>⚠ real issue</span>
+      <span>❓ interview</span>
+    </div>
+  </details>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 1 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-overview">
+    <div class="section-tag">🟪 terraform · 01</div>
+    <h2>Overview &amp; Core Concepts</h2>
+    <p class="section-desc">What Terraform actually does, why teams use it over clicking around the AWS console, and the core idea everything else builds on.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> What is Terraform — and why not just use the AWS Console / CLI scripts?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> Clicking through the AWS Console to create infrastructure is like building furniture from memory every time — no instructions, easy to forget a step, impossible to repeat exactly. Terraform is the IKEA instruction manual — write down exactly what you want once, and run it any number of times to get the identical result.</div>
+        <ul>
+          <li><strong>Infrastructure as Code (IaC):</strong> you describe the desired infrastructure in text files (HCL), and Terraform figures out the steps to make reality match that description.</li>
+          <li><strong>Declarative, not imperative:</strong> you say "I want 3 EC2 instances and a security group" — not "run this command, then this one, then this one." Terraform diffs current vs desired state and only changes what's needed.</li>
+          <li><strong>Provider-agnostic:</strong> the same workflow (<code>init</code>, <code>plan</code>, <code>apply</code>) works for AWS, Azure, GCP, Kubernetes, GitHub, Datadog — anything with a Terraform provider.</li>
+          <li><strong>Why teams love it:</strong> infrastructure changes go through the same review process as code — a pull request, a diff, an approval — instead of someone quietly clicking a button in the console at 11pm.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> The core workflow — init, plan, apply, destroy<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> <code>init</code> is setting up your toolbox. <code>plan</code> is a dry run — a waiter reading back your order before it goes to the kitchen ("just to confirm: 2 EC2 instances, 1 S3 bucket — nothing else changes"). <code>apply</code> is sending that order to the kitchen for real. <code>destroy</code> is closing the tab and clearing the table.</div>
+        <pre><span class="c"># the typical day-to-day flow</span>
+terraform init      <span class="c"># downloads providers + sets up backend</span>
+terraform plan      <span class="c"># shows what WOULD change — nothing is touched yet</span>
+terraform apply     <span class="c"># actually creates/updates/destroys to match your code</span>
+terraform destroy   <span class="c"># tears down everything Terraform manages in this state</span></pre>
+        <ul>
+          <li><strong>init:</strong> downloads the providers (AWS, etc.) and modules referenced in your code, and configures the backend (where state is stored).</li>
+          <li><strong>plan:</strong> compares your code against the current state file and the real infrastructure, and prints a diff — green <code>+</code> for create, red <code>-</code> for destroy, yellow <code>~</code> for update in place.</li>
+          <li><strong>apply:</strong> executes that plan. By default asks for a typed "yes" confirmation — <code>-auto-approve</code> skips that (common in CI pipelines, risky run manually).</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">03</span> State — what it is and why it's the single most important file<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> The state file is Terraform's memory. Without it, Terraform is an amnesiac standing in front of your AWS account asking "wait, did I create this bucket, or did someone else?" The state file is what lets it say "yes, I created exactly this, here's its real ID, and here's what I'll do if you change the code."</div>
+        <ul>
+          <li><code>terraform.tfstate</code> maps every resource block in your code to the real-world object it created (e.g. this <code>aws_instance.web</code> block = actual EC2 instance <code>i-0abc123</code>).</li>
+          <li>Local state (a file on your laptop) works for solo experiments but is dangerous for teams — two people running <code>apply</code> from different state files leads to drift and conflicts.</li>
+          <li><strong>Remote state</strong> (S3 + DynamoDB lock table is the classic AWS pattern) is the real-world standard — shared, locked during operations, and versioned for recovery.</li>
+        </ul>
+        <pre><span class="c"># remote backend — every engineer on the team reads/writes the same state</span>
+terraform {
+  backend "s3" {
+    bucket         = "mycompany-tfstate"
+    key            = "ehs-project/prod/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "tf-state-lock"
+    encrypt        = true
+  }
+}</pre>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 2 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-resources">
+    <div class="section-tag">🟪 terraform · 02</div>
+    <h2>Resources, Variables &amp; State Management</h2>
+    <p class="section-desc">The HCL building blocks you'll write in nearly every <code>.tf</code> file.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> Resources, Data Sources &amp; Providers<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> A <strong>resource</strong> block is "build me this" — Terraform creates and owns it. A <strong>data source</strong> is "look up this thing that already exists" — Terraform just reads it, never creates or destroys it. A <strong>provider</strong> is the translator that knows how to talk to AWS/Azure/GCP's actual API.</div>
+        <pre><span class="c">// provider — which cloud, which credentials/region</span>
+provider "aws" {
+  region = "ap-south-1"
+}
+
+<span class="c">// resource — Terraform creates and manages this</span>
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.micro"
+  tags = { Name = "ehs-web-server" }
+}
+
+<span class="c">// data source — just reads an existing VPC, doesn't create one</span>
+data "aws_vpc" "main" {
+  filter {
+    name   = "tag:Name"
+    values = ["prod-vpc"]
+  }
+}</pre>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> Variables, Outputs &amp; locals<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> <code>variable</code> blocks are blank fields on a form — filled in differently per environment. <code>output</code> blocks are the receipt printed after checkout — values you want to see or hand to another part of the system. <code>locals</code> are scratch-pad notes — computed once, reused everywhere in that same file, so you're not repeating the same expression five times.</div>
+        <pre><span class="c">variable "environment" {
+  type    = string
+  default = "dev"
+}</span>
+
+resource "aws_instance" "web" {
+  instance_type = var.environment == "prod" ? "t3.large" : "t3.micro"
+}
+
+<span class="c">locals {
+  name_prefix = "ehs-${var.environment}"
+}</span>
+
+resource "aws_s3_bucket" "logs" {
+  bucket = "${local.name_prefix}-logs"
+}
+
+<span class="c">output "instance_ip" {
+  value = aws_instance.web.public_ip
+}</span></pre>
+        <ul>
+          <li><code>terraform.tfvars</code> — the file where you actually set variable values per environment (<code>dev.tfvars</code>, <code>prod.tfvars</code>).</li>
+          <li>Variables can also come from <code>-var</code> flags, environment variables (<code>TF_VAR_environment</code>), or <code>tfvars</code> files — Terraform has a defined precedence order if multiple sources set the same variable.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">03</span> State commands — import, move, taint<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> Sometimes reality and the state file disagree — someone created a resource by hand, or you renamed something in code without telling Terraform. These commands let you correct the state file's "memory" without actually touching real infrastructure.</div>
+        <pre><span class="c"># bring an existing, manually-created resource under Terraform's management</span>
+terraform import aws_instance.web i-0abc123def456
+
+<span class="c"># renamed a resource in code? tell state to follow, instead of destroy+recreate</span>
+terraform state mv aws_instance.web aws_instance.web_server
+
+<span class="c"># force a resource to be destroyed & recreated on next apply</span>
+terraform taint aws_instance.web
+
+<span class="c"># see everything Terraform currently thinks it owns</span>
+terraform state list
+terraform state show aws_instance.web</pre>
+        <div class="gotcha-box">
+          <span class="box-label">common mistake</span>
+          Manually deleting a resource in the AWS console without telling Terraform. The state file still thinks it exists — next <code>plan</code> either errors out or, worse, tries to "fix" things in unexpected ways. Always run <code>terraform refresh</code> (or modern <code>plan</code>, which refreshes by default) after any out-of-band change, or better — never make out-of-band changes at all.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 3 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-modules">
+    <div class="section-tag">🟪 terraform · 03</div>
+    <h2>Modules &amp; Reusability</h2>
+    <p class="section-desc">Stop copy-pasting the same VPC/EC2 block into every project.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> Modules — Terraform's reusable building blocks<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> A module is a function in a programming language — you define it once with inputs and outputs, then "call" it from anywhere with different arguments. Instead of writing the same 80-line VPC setup for every project, you write it once as a module and pass in different CIDR ranges per environment.</div>
+        <pre><span class="c">// modules/ec2-app/main.tf — the reusable module</span>
+variable "instance_type" {}
+variable "name" {}
+
+resource "aws_instance" "this" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = var.instance_type
+  tags          = { Name = var.name }
+}
+
+output "public_ip" {
+  value = aws_instance.this.public_ip
+}</pre>
+        <pre><span class="c">// root main.tf — calling the module twice, with different inputs</span>
+module "ehs_app" {
+  source        = "./modules/ec2-app"
+  name          = "ehs-app-server"
+  instance_type = "t3.medium"
+}
+
+module "monitoring" {
+  source        = "./modules/ec2-app"
+  name          = "monitoring-server"
+  instance_type = "t3.small"
+}</pre>
+        <ul>
+          <li><code>source</code> can point to a local path, a Git repo, or the public Terraform Registry — same syntax either way.</li>
+          <li>Modules can call other modules (nesting) — common in larger setups: a root module calling a <code>networking</code> module and an <code>app</code> module, where the app module needs the VPC ID the networking module output.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> Workspaces vs separate state files for environments<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> Workspaces are like having multiple save slots in the same game file — same code, different state per slot (dev/staging/prod). It works, but most real teams find it gets confusing fast and prefer entirely separate state files (or separate Terragrunt folders) per environment for clearer isolation.</div>
+        <pre><span class="c">terraform workspace new staging
+terraform workspace select staging
+terraform workspace list</span></pre>
+        <div class="gotcha-box">
+          <span class="box-label">common mistake</span>
+          Using workspaces for environments that should genuinely be isolated (like dev vs prod), then accidentally running <code>apply</code> against prod because you forgot which workspace was selected. This is one of the core reasons teams move to Terragrunt's folder-per-environment pattern instead.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 4 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-commands">
+    <div class="section-tag">🟪 terraform · 04</div>
+    <h2>Command Cheat Sheet</h2>
+    <p class="section-desc">The commands you'll type without thinking, every single day.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> Everyday commands<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <table>
+          <tr><th>Command</th><th>What it does</th></tr>
+          <tr><td><code>terraform fmt</code></td><td>Auto-formats <code>.tf</code> files to canonical style — run before every commit.</td></tr>
+          <tr><td><code>terraform validate</code></td><td>Checks syntax/internal consistency without touching any infrastructure.</td></tr>
+          <tr><td><code>terraform plan -out=plan.tfplan</code></td><td>Saves the plan to a file so the exact reviewed plan is what gets applied.</td></tr>
+          <tr><td><code>terraform apply plan.tfplan</code></td><td>Applies a previously saved plan — no surprises between review and apply.</td></tr>
+          <tr><td><code>terraform plan -destroy</code></td><td>Preview what destroy would remove, without doing it.</td></tr>
+          <tr><td><code>terraform graph</code></td><td>Outputs a dependency graph (pipe into Graphviz to visualize).</td></tr>
+          <tr><td><code>terraform output</code></td><td>Print all output values from the current state.</td></tr>
+          <tr><td><code>terraform console</code></td><td>Interactive REPL to test expressions against your current state.</td></tr>
+        </table>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> Targeted &amp; surgical operations<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <pre><span class="c"># only plan/apply a specific resource — use sparingly, can mask dependency issues</span>
+terraform apply -target=aws_instance.web
+
+<span class="c"># pass variables inline without a .tfvars file</span>
+terraform apply -var="environment=staging" -var="instance_count=3"
+
+<span class="c"># use a specific tfvars file</span>
+terraform apply -var-file="prod.tfvars"
+
+<span class="c"># skip the interactive yes/no prompt — use carefully, mainly for CI</span>
+terraform apply -auto-approve</pre>
+        <div class="gotcha-box">
+          <span class="box-label">common mistake</span>
+          Overusing <code>-target</code> as a habit. It applies just that resource, ignoring the rest of the plan — but dependent resources elsewhere may now be out of sync with what the full plan would have produced, and the next regular <code>apply</code> can surprise you with unexpected changes.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 5 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-scenarios">
+    <div class="section-tag">🟪 terraform · 05 · ⚠ daily ops</div>
+    <h2>Real Office Issues — Terraform</h2>
+    <p class="section-desc">The exact problems that show up in Slack on a normal Tuesday, with how to find and fix them.</p>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> "Error acquiring the state lock" — apply hangs or fails<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>Someone else's <code>plan</code>/<code>apply</code> is still running (holding the DynamoDB lock), or a previous run crashed/was killed without releasing the lock cleanly.</p>
+        <h4>How to investigate</h4>
+        <pre><span class="c"># check who's holding the lock and since when (info shown in the error message)</span>
+<span class="c"># if you're CERTAIN no one else is actually running terraform right now:</span>
+terraform force-unlock &lt;LOCK_ID&gt;</pre>
+        <h4>Common root causes</h4>
+        <ul>
+          <li>A teammate is mid-<code>apply</code> in another terminal/CI job — just wait.</li>
+          <li>A CI pipeline got killed (timeout, manual cancel) mid-run and never released the lock.</li>
+          <li><strong>Never</strong> force-unlock without confirming nobody else is actually running an operation — doing so while a real apply is in progress can corrupt state.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> "Resource already exists" on apply, for something you never created<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>The real resource exists in AWS (created manually, or by a previous Terraform run with a different state file), but it isn't tracked in your current state — so Terraform tries to create it fresh and AWS rejects the duplicate name/ID.</p>
+        <h4>How to fix</h4>
+        <pre><span class="c"># bring the existing resource under management instead of recreating it</span>
+terraform import aws_s3_bucket.logs my-actual-bucket-name</pre>
+        <div class="scenario-box">
+          <span class="box-label">real office scenario</span>
+          This happens constantly when someone clicks "create" in the AWS console to fix something urgently during an incident, then forgets to add it to Terraform afterward. The next person's <code>apply</code> breaks mysteriously — always <code>import</code> it properly rather than deleting the console-created resource and re-applying, if it's already serving production traffic.
+        </div>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> <code>terraform plan</code> shows changes you didn't make — "drift"<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>Someone (or some automated process, like an autoscaling action or a security tool) modified the real infrastructure outside of Terraform — the state file no longer matches reality.</p>
+        <h4>How to investigate</h4>
+        <pre><span class="c"># refresh state and see exactly what's different from what code expects</span>
+terraform plan
+<span class="c"># if it shows changes you don't want applied, investigate WHO changed it</span>
+<span class="c"># in AWS, check CloudTrail for the resource ID around that time</span></pre>
+        <h4>Common root causes</h4>
+        <ul>
+          <li>Manual console "quick fixes" during an incident that never got reflected back into code.</li>
+          <li>Auto-scaling, AWS Config remediation rules, or a security tool changing a setting automatically (e.g. tightening a security group).</li>
+          <li>Another, separate Terraform state file accidentally managing overlapping resources.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> State file is corrupted, lost, or out of sync after a CI failure<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>A CI job died mid-apply (network blip, runner OOM, timeout) right as Terraform was writing the updated state — leaving a partial or inconsistent state file.</p>
+        <h4>How to fix</h4>
+        <pre><span class="c"># S3 backend with versioning enabled (you should always have this) —</span>
+<span class="c"># restore the previous good version of the state object from S3 versioning</span>
+aws s3api list-object-versions --bucket mycompany-tfstate --prefix ehs-project/prod/terraform.tfstate
+
+<span class="c"># then re-run plan to confirm reality vs restored state matches expectations</span>
+terraform plan</pre>
+        <div class="gotcha-box">
+          <span class="box-label">common mistake</span>
+          Not enabling versioning on the S3 bucket used as the backend. Without it, a corrupted/overwritten state file has no recovery path short of painstakingly re-importing every resource by hand.
+        </div>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> Apply wants to destroy and recreate a resource you only changed slightly<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>Some attributes are "ForceNew" in the provider's schema — changing them isn't possible in-place on the real cloud API, so Terraform's only option is destroy + recreate (shown as <code>-/+</code> in the plan).</p>
+        <h4>How to investigate</h4>
+        <pre><span class="c"># the plan output explicitly tells you which attribute forces replacement</span>
+<span class="c"># look for: "# forces replacement" next to the changed line</span>
+terraform plan</pre>
+        <h4>Common examples</h4>
+        <ul>
+          <li>Changing an EC2 instance's <code>availability_zone</code> — can't move a running instance between AZs in-place.</li>
+          <li>Changing an RDS instance's <code>identifier</code> — this is genuinely a different resource as far as AWS is concerned.</li>
+          <li>For stateful resources like databases, always check if there's a safer in-place alternative (e.g. <code>aws_db_instance</code> has many attributes that ARE updatable — only some force replacement).</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAFORM SECTION 6 -->
+  <!-- ============================================================ -->
+  <section class="section" id="t-interview">
+    <div class="section-tag">🟪 terraform · 06 · ❓ interview prep</div>
+    <h2>Interview Q&amp;A — Terraform</h2>
+    <p class="section-desc">Questions that come up again and again, answered the way you'd actually say them out loud.</p>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What's the difference between Terraform state and the actual infrastructure?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> The state file is Terraform's record of what it created and the real-world IDs/attributes of those resources. The actual infrastructure is what genuinely exists in AWS/Azure/GCP right now. Normally these match, but they can drift apart if someone changes infrastructure outside of Terraform (console click, another tool) — that's why <code>terraform plan</code> always refreshes and compares both before showing a diff.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> Why use remote state instead of a local state file?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> Local state lives on one person's machine — it can't be safely shared, isn't locked during concurrent operations, and is one accidental <code>rm</code> away from disaster. Remote state (commonly S3 + DynamoDB for locking on AWS) gives the whole team a single source of truth, prevents two people applying simultaneously and corrupting state, and supports versioning for recovery.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> Explain the difference between a resource and a data source.<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> A <code>resource</code> block is something Terraform creates, updates, and can destroy — it owns the lifecycle. A <code>data</code> block only reads information about something that already exists (created manually, by another team, or by another Terraform state) — Terraform never modifies or destroys it, just references its attributes.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What does <code>terraform plan</code> actually do under the hood?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> It refreshes the state by querying the real infrastructure's current attributes via the provider's API, compares that against both the existing state file and your desired configuration in code, and computes a diff — additions, in-place updates, or destroy-and-recreate — without actually executing any of it.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> How would you safely roll out a change to a critical production resource?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> Run <code>plan</code> and carefully review the diff — especially watching for any unexpected <code>-/+</code> (destroy and recreate) on stateful resources. Save the plan to a file (<code>-out</code>) so what gets reviewed is exactly what gets applied, get a second pair of eyes on it in a PR, and apply that saved plan file rather than re-running <code>apply</code> fresh (which could pick up a different diff if anything changed in between).</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What happens if two people run <code>terraform apply</code> at the same time?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> With remote state locking configured (e.g. DynamoDB lock table alongside an S3 backend), the second person's apply is blocked with a "state lock" error until the first finishes. Without locking — like local state, or a misconfigured backend — both could write to the state file simultaneously, corrupting it. This is the core reason locking is non-negotiable for any team setup.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> When would you use <code>-target</code>, and why is it risky?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> <code>-target</code> limits an apply/plan to one specific resource — useful for an emergency fix on a single resource without touching the rest of a large plan. It's risky because Terraform's normal dependency-aware planning is bypassed for everything outside the target — other resources that depend on it (or that the full plan would have also changed) are left out of sync, and the next full apply can surprise you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAGRUNT SECTION 1 -->
+  <!-- ============================================================ -->
+  <section class="section" id="g-overview">
+    <div class="section-tag">🟦 terragrunt · 01</div>
+    <h2>Why Terragrunt Exists</h2>
+    <p class="section-desc">The thin wrapper around Terraform that solves the "same code, slightly different per environment" problem.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> The problem Terragrunt solves<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> Imagine writing the exact same VPC/networking Terraform code three separate times — once for dev, once for staging, once for prod — each in its own folder with a near-identical <code>backend</code> block, just a different bucket key. Terragrunt is the person standing over your shoulder saying "stop copy-pasting that config — let's write it once and just point each environment at it."</div>
+        <ul>
+          <li>Plain Terraform has no built-in way to keep backend config, provider config, and common variables DRY across many environments/modules — you either copy-paste or build your own templating.</li>
+          <li>Terragrunt is a thin wrapper that runs Terraform underneath, but adds: DRY backend/provider generation, dependency ordering between modules, and the ability to run a command across many modules at once.</li>
+          <li>You still write standard Terraform modules — Terragrunt just orchestrates <em>how</em> they're configured and called per environment.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> terragrunt.hcl — the config file at the heart of it<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> If a Terraform module is a recipe, <code>terragrunt.hcl</code> is the index card taped above one specific stove saying "use the lasagna recipe, but with these exact ingredient amounts, and save the leftovers in container labeled 'prod'."</div>
+        <pre><span class="c">// live/prod/ehs-app/terragrunt.hcl</span>
+include "root" {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "../../../modules//ec2-app"
+}
+
+inputs = {
+  environment   = "prod"
+  instance_type = "t3.large"
+}</pre>
+        <ul>
+          <li><code>include</code> pulls in shared config (like the backend block) from a parent <code>terragrunt.hcl</code> — no need to repeat it per environment.</li>
+          <li><code>terraform { source = ... }</code> points to the actual Terraform module being used — same module, different inputs per environment folder.</li>
+          <li><code>inputs</code> is just a map that gets passed straight through as Terraform variables — no separate <code>.tfvars</code> juggling needed.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAGRUNT SECTION 2 -->
+  <!-- ============================================================ -->
+  <section class="section" id="g-structure">
+    <div class="section-tag">🟦 terragrunt · 02</div>
+    <h2>DRY Structure &amp; Dependencies</h2>
+    <p class="section-desc">The folder layout real teams use, and how modules learn about each other's outputs.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> The typical live/ + modules/ folder layout<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> <code>modules/</code> is the cookbook (reusable recipes). <code>live/</code> is the actual kitchen schedule — which recipe gets cooked, for which environment, with which ingredient amounts, today.</div>
+        <pre><span class="c">infra/
+├── terragrunt.hcl              # ROOT config: shared backend, provider generation
+├── modules/
+│   ├── vpc/
+│   └── ec2-app/
+└── live/
+    ├── dev/
+    │   ├── vpc/terragrunt.hcl
+    │   └── ehs-app/terragrunt.hcl
+    ├── staging/
+    │   ├── vpc/terragrunt.hcl
+    │   └── ehs-app/terragrunt.hcl
+    └── prod/
+        ├── vpc/terragrunt.hcl
+        └── ehs-app/terragrunt.hcl</span></pre>
+        <ul>
+          <li>The root <code>terragrunt.hcl</code> defines the S3 backend pattern <em>once</em>, usually templated with the relative path so each environment automatically gets its own state file key.</li>
+          <li>Every leaf folder (<code>live/prod/ehs-app/</code>) has a tiny <code>terragrunt.hcl</code> that just says "use this module, with these inputs" — all the repetitive boilerplate lives in the root only.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="item">
+      <summary><span class="num">02</span> Dependencies between modules — passing outputs automatically<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <div class="simple-box"><strong>Simple way to think about it:</strong> Your EC2 app module needs the VPC ID that the networking module created. Instead of manually copying that ID into a variable every time it changes, <code>dependency</code> blocks let one module automatically "ask" another module's already-applied state for its output values.</div>
+        <pre><span class="c">// live/prod/ehs-app/terragrunt.hcl</span>
+dependency "vpc" {
+  config_path = "../vpc"
+}
+
+inputs = {
+  vpc_id = dependency.vpc.outputs.vpc_id
+}</pre>
+        <ul>
+          <li>Terragrunt automatically figures out it needs to apply the <code>vpc</code> module before <code>ehs-app</code> when you run <code>run-all apply</code> — dependency ordering is handled for you.</li>
+          <li><code>mock_outputs</code> can be set so <code>plan</code> works even before the dependency has been applied yet (useful in fresh environments or CI dry-runs).</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAGRUNT SECTION 3 -->
+  <!-- ============================================================ -->
+  <section class="section" id="g-commands">
+    <div class="section-tag">🟦 terragrunt · 03</div>
+    <h2>Command Cheat Sheet</h2>
+    <p class="section-desc">Mostly the same as Terraform, with a few orchestration superpowers added.</p>
+
+    <details class="item">
+      <summary><span class="num">01</span> Standard + run-all commands<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <table>
+          <tr><th>Command</th><th>What it does</th></tr>
+          <tr><td><code>terragrunt plan</code></td><td>Same as Terraform's plan, but for the current folder's module + its resolved inputs.</td></tr>
+          <tr><td><code>terragrunt apply</code></td><td>Applies just the current folder's module.</td></tr>
+          <tr><td><code>terragrunt run-all plan</code></td><td>Plans every module in and below the current folder, in dependency order.</td></tr>
+          <tr><td><code>terragrunt run-all apply</code></td><td>Applies every module in and below the current folder, respecting dependency order.</td></tr>
+          <tr><td><code>terragrunt destroy</code></td><td>Destroys just the current folder's module.</td></tr>
+          <tr><td><code>terragrunt run-all destroy</code></td><td>Destroys an entire environment's worth of modules — reverse dependency order. Use with extreme care.</td></tr>
+          <tr><td><code>terragrunt output</code></td><td>Print outputs of the current module.</td></tr>
+        </table>
+        <div class="gotcha-box">
+          <span class="box-label">common mistake</span>
+          Running <code>run-all apply</code> from too high up the folder tree (e.g. the very top of <code>live/</code>) without realizing it'll touch <em>every environment</em> at once, including prod. Always <code>cd</code> into the specific environment folder you mean to operate on, and double check with a plan first.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAGRUNT SECTION 4 -->
+  <!-- ============================================================ -->
+  <section class="section" id="g-scenarios">
+    <div class="section-tag">🟦 terragrunt · 04 · ⚠ daily ops</div>
+    <h2>Real Office Issues — Terragrunt</h2>
+    <p class="section-desc">The specific ways Terragrunt setups go wrong, beyond the regular Terraform issues above.</p>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> "Could not find terragrunt.hcl" or "no terraform files found"<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>Running a Terragrunt command from the wrong directory, or the <code>source</code> path in <code>terraform { source = ... }</code> points somewhere that doesn't actually contain the module.</p>
+        <h4>How to investigate</h4>
+        <pre><span class="c"># confirm you're in the right leaf folder (live/&lt;env&gt;/&lt;component&gt;)</span>
+pwd
+<span class="c"># check the source path actually resolves correctly relative to this file</span>
+cat terragrunt.hcl</pre>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> <code>dependency</code> block fails because the dependency hasn't been applied yet<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>You're trying to <code>plan</code>/<code>apply</code> a module that depends on another module's outputs, but that other module has never been successfully applied — there's no real state to read outputs from.</p>
+        <h4>How to fix</h4>
+        <pre><span class="c"># option 1: apply the dependency first</span>
+cd ../vpc &amp;&amp; terragrunt apply
+
+<span class="c"># option 2: add mock_outputs in the terragrunt.hcl so plan works anyway</span>
+dependency "vpc" {
+  config_path = "../vpc"
+  mock_outputs = {
+    vpc_id = "vpc-00000000"
+  }
+}</pre>
+        <div class="scenario-box">
+          <span class="box-label">real office scenario</span>
+          This is the classic "brand new environment" problem — spinning up a fresh staging environment from scratch, where nothing exists yet. <code>mock_outputs</code> lets you still run <code>plan</code> across the whole tree to sanity-check the configuration before the real dependency chain has anything to read from.
+        </div>
+      </div>
+    </details>
+
+    <details class="item issue-item">
+      <summary><span class="issue-badge">issue</span> Same change applied differently across environments — drift between dev/staging/prod<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <h4>Why it happens</h4>
+        <p>Someone edited an environment-specific <code>terragrunt.hcl</code>'s <code>inputs</code> directly instead of updating the shared module or a common variable, so environments silently diverge over time.</p>
+        <h4>How to fix</h4>
+        <ul>
+          <li>Push genuinely shared logic (not just values) up into the module itself, or into the root <code>terragrunt.hcl</code>'s shared <code>inputs</code>/<code>locals</code>, rather than letting each environment fork its own copy.</li>
+          <li>Periodically run <code>run-all plan</code> across all environments and review — drift in the plan output for environments you didn't intend to touch is a signal something's misaligned.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TERRAGRUNT SECTION 5 -->
+  <!-- ============================================================ -->
+  <section class="section" id="g-interview">
+    <div class="section-tag">🟦 terragrunt · 05 · ❓ interview prep</div>
+    <h2>Interview Q&amp;A — Terragrunt</h2>
+    <p class="section-desc">The questions that confirm you've actually used it on a real multi-environment setup.</p>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What problem does Terragrunt solve that plain Terraform doesn't?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> Plain Terraform has no native way to keep backend configuration, provider blocks, and common variables DRY across many environments and modules — you end up copy-pasting near-identical boilerplate into every folder. Terragrunt is a thin wrapper that generates that shared config once, manages dependency ordering between modules, and can run commands across many modules at once (<code>run-all</code>) — while the underlying infrastructure is still defined in standard Terraform modules.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> How does Terragrunt handle dependencies between modules, like a VPC and the EC2 instances inside it?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> Through <code>dependency</code> blocks — a module's <code>terragrunt.hcl</code> can reference another module's already-applied outputs (e.g. <code>dependency.vpc.outputs.vpc_id</code>). When you run <code>run-all apply</code>, Terragrunt builds a dependency graph from these blocks and applies modules in the correct order automatically, rather than you manually sequencing <code>apply</code> commands.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What's the risk of running <code>terragrunt run-all apply</code> carelessly?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> It applies every module found in and below your current directory. If run from too high up the folder tree — say, the root of <code>live/</code> instead of inside a specific environment folder — it can apply changes across dev, staging, AND prod in one command. Always run it from the narrowest relevant folder, and run <code>run-all plan</code> first to review exactly what's in scope.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> Terraform workspaces vs Terragrunt's folder-per-environment — which would you choose and why?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> Workspaces keep one codebase with multiple named state "slots," which is convenient but easy to misuse — applying against the wrong workspace because you forgot to switch is a real, common incident. Terragrunt's folder-per-environment approach makes the target environment explicit in the path you're standing in, removes ambiguity, and pairs naturally with per-environment input differences — most teams managing meaningfully different prod/staging/dev configurations prefer it for that clarity.</p>
+      </div>
+    </details>
+
+    <details class="item qa-item">
+      <summary><span class="q-badge">Q</span> What are <code>mock_outputs</code> for, and when would you use them?<span class="arrow">▾</span></summary>
+      <div class="item-body">
+        <p><span class="answer-label">A:</span> They let a <code>dependency</code> block return placeholder values when the real dependency hasn't been applied yet — so you can still run <code>plan</code> (or even some CI validation) across an entire fresh environment before every module has real state to read outputs from. Without them, <code>plan</code> on a dependent module would simply fail until its dependencies are applied first.</p>
+        </div>
+    </details>
+  </section>
+
+  <footer>
+    built for daily reference · terraform &amp; terragrunt field notes · keep this open in a tab
+  </footer>
+
+</div>
+
+</body>
+</html>
